@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Sistema de Campo LN - Excel</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: sans-serif; }
+        #map { height: 100%; width: 100%; z-index: 1; }
+
+        .ui-panel {
+            position: absolute; top: 10px; left: 10px; right: 10px; z-index: 1000;
+            background: white; padding: 12px; border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        @media (min-width: 768px) { .ui-panel { width: 350px; left: auto; } }
+
+        .btn-group { display: flex; gap: 5px; }
+        button { 
+            padding: 8px 12px; border: none; border-radius: 6px; 
+            background: #f0f0f0; cursor: pointer; font-size: 12px; font-weight: bold;
+        }
+        .btn-import { background: #3498db; color: white; }
+        
+        /* Cores de Status */
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="ui-panel">
+        <div>
+            <strong>Monitoramento LN</strong>
+            <div style="font-size: 11px; margin-top: 3px;">
+                <span class="status-dot" style="background:#2ecc71"></span>Apto
+                <span class="status-dot" style="background:#e74c3c; margin-left:8px"></span>Manut.
+            </div>
+        </div>
+        <div class="btn-group">
+            <button class="btn-import" onclick="document.getElementById('excel-input').click()">Subir XLSX</button>
+            <input type="file" id="excel-input" style="display: none;" accept=".xlsx, .xls">
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCxoNBUTu_WOYZTXI-48CitzH3uRko9LGs",
+            authDomain: "acompanhamanutencoesln.firebaseapp.com",
+            databaseURL: "https://acompanhamanutencoesln-default-rtdb.firebaseio.com",
+            projectId: "acompanhamanutencoesln",
+            storageBucket: "acompanhamanutencoesln.firebasestorage.app",
+            messagingSenderId: "888565328678",
+            appId: "1:888565328678:web:cebacba890b77e42f3efe7"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const map = L.map('map', { zoomControl: false }).setView([-15, -47], 4);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        // Localização Tempo Real
+        map.locate({ watch: true, enableHighAccuracy: true });
+        let userMarker;
+        map.on('locationfound', (e) => {
+            if (!userMarker) {
+                userMarker = L.circleMarker(e.latlng, { radius: 7, color: '#3498db', fillOpacity: 1 }).addTo(map).bindPopup("Sua Posição");
+                map.setView(e.latlng, 15);
+            } else { userMarker.setLatLng(e.latlng); }
+        });
+
+        // Monitorar Firebase
+        const markersGroup = L.layerGroup().addTo(map);
+        onValue(ref(db, 'transformadores/'), (snapshot) => {
+            markersGroup.clearLayers();
+            const data = snapshot.val();
+            for (let id in data) {
+                const item = data[id];
+                const marker = L.circleMarker([item.latitude, item.longitude], {
+                    radius: 10, fillColor: item.status === 'apto' ? '#2ecc71' : '#e74c3c',
+                    color: '#fff', weight: 2, fillOpacity: 1
+                }).addTo(markersGroup);
+                marker.bindPopup(`<b>${item.referencia}</b><br>Status: ${item.status}`);
+            }
+        });
+
+        // Função para Processar EXCEL
+        document.getElementById('excel-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(evt) {
+                const data = evt.target.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                const firstSheet = workbook.SheetNames[0];
+                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
+
+                const novosDados = {};
+                rows.forEach((row, index) => {
+                    if (row.latitude && row.longitude) {
+                        const id = row.id || `tr_${Date.now()}_${index}`;
+                        novosDados[id] = {
+                            referencia: row.referencia || "Sem ref",
+                            latitude: parseFloat(row.latitude),
+                            longitude: parseFloat(row.longitude),
+                            status: String(row.status).toLowerCase(),
+                            data: row.data || new Date().toLocaleDateString()
+                        };
+                    }
+                });
+
+                if (confirm(`Deseja carregar ${Object.keys(novosDados).length} pontos para o mapa?`)) {
+                    set(ref(db, 'transformadores/'), novosDados)
+                        .then(() => alert("Base atualizada com sucesso!"))
+                        .catch(err => alert("Erro ao subir para o Firebase: " + err));
+                }
+            };
+            reader.readAsBinaryString(file);
+        });
+    </script>
+</body>
+</html>
