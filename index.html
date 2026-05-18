@@ -1,135 +1,1104 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Sistema de Campo LN - Excel</title>
-    
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: sans-serif; }
-        #map { height: 100%; width: 100%; z-index: 1; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>EasyTrafo</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#080c10;--s1:#0d1117;--s2:#161b22;--s3:#1c2128;--b1:#21262d;--b2:#30363d;--t1:#e6edf3;--t2:#8b949e;--t3:#484f58;
+--ac:#00d4ff;--ag:rgba(0,212,255,.15);--gn:#00e676;--gg:rgba(0,230,118,.25);--rd:#ff1744;--rg:rgba(255,23,68,.25);
+--bl:#448aff;--bg2:rgba(68,138,255,.25);--yw:#ffd600;--yg:rgba(255,214,0,.3);--sw:360px}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--t1);font-family:'Rajdhani',sans-serif;overflow:hidden}
 
-        .ui-panel {
-            position: absolute; top: 10px; left: 10px; right: 10px; z-index: 1000;
-            background: white; padding: 12px; border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-            display: flex; justify-content: space-between; align-items: center;
-        }
+/* LOADING */
+#ld{position:fixed;inset:0;background:var(--bg);z-index:9000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;transition:opacity .5s}
+.lr{width:48px;height:48px;border:3px solid var(--b2);border-top-color:var(--ac);border-radius:50%;animation:spin .8s linear infinite}
+.lt{color:var(--t2);font-size:.9rem;letter-spacing:2px;text-transform:uppercase}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-        @media (min-width: 768px) { .ui-panel { width: 350px; left: auto; } }
+/* LOGIN */
+#login{position:fixed;inset:0;background:var(--bg);display:none;align-items:center;justify-content:center;z-index:8000}
+.lcard{background:var(--s1);border:1px solid var(--b2);border-radius:16px;padding:48px 40px;width:360px;
+box-shadow:0 0 60px rgba(0,212,255,.08),0 24px 48px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:22px}
+.logo h1{font-size:2.4rem;font-weight:700;color:var(--ac);letter-spacing:3px;text-shadow:0 0 30px rgba(0,212,255,.5);text-align:center}
+.logo p{color:var(--t2);font-size:.88rem;margin-top:4px;letter-spacing:1px;text-align:center}
+.lf{display:flex;flex-direction:column;gap:8px}
+.lf label{font-size:.78rem;color:var(--t2);text-transform:uppercase;letter-spacing:1.5px}
+.lf input{background:var(--s2);border:1px solid var(--b2);border-radius:8px;color:var(--t1);font-family:'Rajdhani',sans-serif;
+font-size:1.05rem;font-weight:500;padding:12px 16px;outline:none;transition:border-color .2s,box-shadow .2s;width:100%}
+.lf input:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--ag)}
+.btnl{background:var(--ac);color:#000;border:none;border-radius:8px;font-family:'Rajdhani',sans-serif;
+font-size:1rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:14px;cursor:pointer;
+transition:box-shadow .2s,transform .1s;width:100%}
+.btnl:hover{box-shadow:0 0 24px rgba(0,212,255,.45);transform:translateY(-1px)}
 
-        .btn-group { display: flex; gap: 5px; }
-        button { 
-            padding: 8px 12px; border: none; border-radius: 6px; 
-            background: #f0f0f0; cursor: pointer; font-size: 12px; font-weight: bold;
-        }
-        .btn-import { background: #3498db; color: white; }
-        
-        /* Cores de Status */
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-    </style>
+/* APP */
+#app{display:none;width:100%;height:100%;position:relative}
+#map{position:absolute;inset:0;z-index:1}
+.leaflet-tile{filter:brightness(.72) saturate(.55)}
+.leaflet-popup{display:none!important}
+.leaflet-top.leaflet-left{top:64px}
+.leaflet-control-zoom a{background:var(--s1)!important;color:var(--t1)!important;border-color:var(--b2)!important;font-weight:700}
+
+/* HEADER */
+#hdr{position:absolute;top:0;left:0;right:0;height:54px;background:rgba(8,12,16,.95);backdrop-filter:blur(14px);
+border-bottom:1px solid var(--b1);z-index:500;display:flex;align-items:center;padding:0 16px;gap:10px}
+.hlogo{font-size:1.35rem;font-weight:700;color:var(--ac);letter-spacing:2px;text-shadow:0 0 20px rgba(0,212,255,.45);flex-shrink:0}
+.hsep{width:1px;height:24px;background:var(--b2)}
+#husr{font-size:.82rem;color:var(--t2);letter-spacing:1px}
+.hsts{display:flex;gap:6px;margin-left:auto}
+.sp{display:flex;align-items:center;gap:5px;background:var(--s2);border:1px solid var(--b1);border-radius:20px;padding:3px 9px;font-size:.74rem;font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%}
+.dot.g{background:var(--gn);box-shadow:0 0 8px var(--gn)}
+.dot.r{background:var(--rd);box-shadow:0 0 8px var(--rd)}
+.dot.b{background:var(--bl);box-shadow:0 0 8px var(--bl)}
+.dot.x{background:var(--t3)}
+
+/* SIDEBAR TOGGLE */
+#stgl{position:absolute;top:63px;right:12px;z-index:600;background:rgba(8,12,16,.92);border:1px solid var(--b2);
+border-radius:8px;color:var(--ac);font-size:1.1rem;width:36px;height:36px;cursor:pointer;
+display:flex;align-items:center;justify-content:center;transition:background .2s}
+#stgl:hover{background:var(--s2)}
+
+/* SIDEBAR */
+#sb{position:absolute;top:54px;right:0;bottom:0;width:var(--sw);background:rgba(8,12,16,.97);
+backdrop-filter:blur(18px);border-left:1px solid var(--b1);z-index:400;display:flex;flex-direction:column;
+transform:translateX(0);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+#sb.col{transform:translateX(100%)}
+.sbh{padding:12px 14px;border-bottom:1px solid var(--b1);flex-shrink:0;display:flex;flex-direction:column;gap:9px}
+.sbt{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--t2)}
+.si{background:var(--s2);border:1px solid var(--b2);border-radius:8px;color:var(--t1);
+font-family:'JetBrains Mono',monospace;font-size:.8rem;padding:8px 12px;outline:none;width:100%;transition:border-color .2s}
+.si:focus{border-color:var(--ac)}
+.fr{display:flex;gap:4px}
+.fb{flex:1;padding:5px 2px;border-radius:6px;border:1px solid var(--b2);background:var(--s2);color:var(--t2);
+font-family:'Rajdhani',sans-serif;font-size:.72rem;font-weight:600;cursor:pointer;transition:all .15s}
+.fb.fA{border-color:var(--ac);color:var(--ac);background:var(--ag)}
+.fb.fG{border-color:var(--gn);color:var(--gn);background:var(--gg)}
+.fb.fR{border-color:var(--rd);color:var(--rd);background:var(--rg)}
+.fb.fB{border-color:var(--bl);color:var(--bl);background:var(--bg2)}
+.fb.fX{border-color:var(--t3);color:var(--t2);background:rgba(72,79,88,.15)}
+
+/* TABS */
+.stabs{display:flex;border-bottom:1px solid var(--b1);flex-shrink:0;overflow-x:auto}
+.stab{flex:1;min-width:60px;padding:9px 4px;background:none;border:none;color:var(--t2);font-family:'Rajdhani',sans-serif;
+font-size:.72rem;font-weight:600;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.stab.on{color:var(--ac);border-bottom-color:var(--ac)}
+.tc{display:none;flex:1;overflow:hidden;flex-direction:column}
+.tc.on{display:flex}
+
+/* TRAFO LIST */
+#tlist{flex:1;overflow-y:auto;padding:6px}
+#tlist::-webkit-scrollbar{width:4px}
+#tlist::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+.ti{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:8px;border:1px solid transparent;cursor:pointer;transition:all .15s;margin-bottom:2px}
+.ti:hover{background:var(--s2);border-color:var(--b2)}
+.ti.sel{background:var(--s3);border-color:var(--ac)}
+.tdt{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.tdt.none{background:var(--t3)}
+.tdt.apto{background:var(--gn);box-shadow:0 0 6px var(--gn)}
+.tdt.napto{background:var(--rd);box-shadow:0 0 6px var(--rd)}
+.tdt.instalado{background:var(--bl);box-shadow:0 0 6px var(--bl)}
+.tin{flex:1;min-width:0}
+.tid{font-family:'JetBrains Mono',monospace;font-size:.78rem;font-weight:500;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tco{font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--t3);margin-top:1px}
+.tst{font-size:.66rem;font-weight:600;letter-spacing:.5px;text-transform:uppercase;padding:2px 6px;border-radius:4px;flex-shrink:0}
+.tst.none{color:var(--t3)}
+.tst.apto{color:var(--gn);background:var(--gg)}
+.tst.napto{color:var(--rd);background:var(--rg)}
+.tst.instalado{color:var(--bl);background:var(--bg2)}
+.ti-img{font-size:.6rem;color:var(--yw);margin-left:2px}
+
+/* IO TAB */
+.iotab{padding:12px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;flex:1}
+.iosec{background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:13px;display:flex;flex-direction:column;gap:9px}
+.iostt{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--t2)}
+.uz{border:2px dashed var(--b2);border-radius:8px;padding:16px;text-align:center;cursor:pointer;
+transition:all .2s;color:var(--t2);font-size:.82rem;line-height:1.7}
+.uz:hover{border-color:var(--ac);color:var(--ac);background:var(--ag)}
+.uz input{display:none}
+.ba{display:flex;align-items:center;justify-content:center;gap:8px;padding:9px 12px;border-radius:8px;
+border:1px solid var(--b2);background:var(--s3);color:var(--t1);font-family:'Rajdhani',sans-serif;
+font-size:.84rem;font-weight:600;letter-spacing:.8px;text-transform:uppercase;cursor:pointer;transition:all .2s;width:100%}
+.ba:hover{background:var(--s2);border-color:var(--ac);color:var(--ac)}
+.ba.bg2:hover{border-color:var(--gn);color:var(--gn);background:var(--gg)}
+.ba.bb:hover{border-color:var(--bl);color:var(--bl);background:var(--bg2)}
+.ba.bpur:hover{border-color:#c084fc;color:#c084fc;background:rgba(192,132,252,.15)}
+.ba.bred:hover{border-color:var(--rd);color:var(--rd);background:var(--rg)}
+.ba.byw:hover{border-color:var(--yw);color:var(--yw);background:var(--yg)}
+
+/* BULK MODAL */
+#bulk-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:3000;
+display:none;align-items:center;justify-content:center}
+#bulk-modal.on{display:flex}
+.bm-card{background:var(--s1);border:1px solid var(--b2);border-radius:16px;padding:28px;width:480px;max-width:95vw;
+display:flex;flex-direction:column;gap:18px;box-shadow:0 24px 60px rgba(0,0,0,.7)}
+.bm-title{font-size:1.2rem;font-weight:700;color:var(--ac);letter-spacing:1px}
+.bm-sub{font-size:.82rem;color:var(--t2);line-height:1.6}
+.bm-steps{display:flex;flex-direction:column;gap:8px}
+.bm-step{background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:10px 14px;font-size:.82rem;color:var(--t2);line-height:1.5}
+.bm-step b{color:var(--t1)}
+.bm-dropzone{border:2px dashed var(--b2);border-radius:10px;padding:28px;text-align:center;cursor:pointer;
+transition:all .2s;color:var(--t2);font-size:.88rem;line-height:1.8}
+.bm-dropzone:hover,.bm-dropzone.drag{border-color:var(--ac);color:var(--ac);background:var(--ag)}
+.bm-dropzone input{display:none}
+#bm-preview{display:none;flex-direction:column;gap:8px}
+#bm-preview.on{display:flex}
+.bm-prev-hdr{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--t2)}
+#bm-table-wrap{max-height:180px;overflow-y:auto;border-radius:6px;border:1px solid var(--b1)}
+#bm-table-wrap::-webkit-scrollbar{width:4px}
+#bm-table-wrap::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+.bm-tbl{width:100%;border-collapse:collapse;font-size:.74rem;font-family:'JetBrains Mono',monospace}
+.bm-tbl th{background:var(--s3);padding:6px 10px;text-align:left;color:var(--t2);font-size:.7rem;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--b1)}
+.bm-tbl td{padding:5px 10px;border-bottom:1px solid var(--b1);color:var(--t1)}
+.bm-tbl tr:last-child td{border-bottom:none}
+.st-pill{display:inline-block;padding:1px 7px;border-radius:4px;font-size:.68rem;font-weight:700;text-transform:uppercase}
+.st-pill.apto{color:var(--gn);background:var(--gg)}
+.st-pill.napto{color:var(--rd);background:var(--rg)}
+.st-pill.instalado{color:var(--bl);background:var(--bg2)}
+.st-pill.err{color:var(--yw);background:rgba(255,214,0,.15)}
+.bm-cnt{font-size:.8rem;color:var(--t2)}
+.bm-cnt b{color:var(--t1)}
+.bm-foot{display:flex;gap:10px}
+.bm-send{flex:1;padding:11px;background:var(--ac);color:#000;border:none;border-radius:8px;
+font-family:'Rajdhani',sans-serif;font-size:.9rem;font-weight:700;letter-spacing:1.5px;cursor:pointer;transition:box-shadow .2s}
+.bm-send:hover{box-shadow:0 0 24px rgba(0,212,255,.4)}
+.bm-send:disabled{opacity:.4;cursor:not-allowed}
+.bm-cancel{padding:11px 16px;background:var(--s2);border:1px solid var(--b2);border-radius:8px;
+color:var(--t2);font-family:'Rajdhani',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .15s}
+.bm-cancel:hover{border-color:var(--t2);color:var(--t1)}
+.bm-prog{display:none;flex-direction:column;gap:8px}
+.bm-prog.on{display:flex}
+.bm-bar-wrap{background:var(--s2);border-radius:20px;height:8px;overflow:hidden}
+.bm-bar{height:100%;background:var(--ac);border-radius:20px;transition:width .2s;width:0%}
+.bm-prog-txt{font-size:.8rem;color:var(--t2);text-align:center}
+
+/* ===== POPUP ===== */
+#pop{position:fixed;z-index:2000;background:var(--s1);border:1px solid var(--b2);border-radius:14px;padding:0;width:300px;
+box-shadow:0 16px 48px rgba(0,0,0,.75),0 0 0 1px rgba(255,255,255,.04);transform:translate(-50%,-108%);
+display:none;flex-direction:column;pointer-events:all;overflow:hidden;max-height:90vh}
+#pop.on{display:flex}
+.pop-scroll{overflow-y:auto;flex:1;padding:18px;display:flex;flex-direction:column;gap:12px}
+.pop-scroll::-webkit-scrollbar{width:3px}
+.pop-scroll::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+.ptt{font-family:'JetBrains Mono',monospace;font-size:.92rem;font-weight:500;color:var(--ac);border-bottom:1px solid var(--b1);padding-bottom:10px}
+.ptt span{color:var(--t2);font-size:.7rem;display:block;margin-top:3px}
+.pac{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.sbn{padding:10px 4px;border-radius:8px;border:1px solid;background:transparent;font-family:'Rajdhani',sans-serif;
+font-size:.76rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;
+transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:5px}
+.sbn .sd{width:10px;height:10px;border-radius:50%}
+.sbn.apto{border-color:var(--gn);color:var(--gn)}
+.sbn.apto:hover,.sbn.apto.on{background:var(--gg);box-shadow:0 0 18px var(--gg)}
+.sbn.napto{border-color:var(--rd);color:var(--rd)}
+.sbn.napto:hover,.sbn.napto.on{background:var(--rg);box-shadow:0 0 18px var(--rg)}
+.sbn.inst{border-color:var(--bl);color:var(--bl)}
+.sbn.inst:hover,.sbn.inst.on{background:var(--bg2);box-shadow:0 0 18px var(--bg2)}
+.pob{display:none;flex-direction:column;gap:6px}
+.pob.on{display:flex}
+.pob label{font-size:.7rem;color:var(--t2);letter-spacing:1px;text-transform:uppercase}
+.pob textarea{background:var(--s2);border:1px solid var(--b2);border-radius:6px;color:var(--t1);
+font-family:'Rajdhani',sans-serif;font-size:.9rem;padding:8px 10px;resize:vertical;min-height:65px;
+outline:none;width:100%;transition:border-color .2s}
+.pob textarea:focus{border-color:var(--rd)}
+
+/* FOTOS no popup */
+.foto-sec{display:flex;flex-direction:column;gap:8px}
+.foto-lbl{font-size:.7rem;color:var(--t2);letter-spacing:1px;text-transform:uppercase}
+.foto-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.foto-thumb{position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;background:var(--s2);border:1px solid var(--b1);cursor:pointer}
+.foto-thumb img{width:100%;height:100%;object-fit:cover;transition:opacity .2s}
+.foto-thumb:hover img{opacity:.7}
+.foto-del{position:absolute;top:3px;right:3px;background:rgba(255,23,68,.85);border:none;border-radius:4px;
+color:#fff;font-size:.65rem;font-weight:700;cursor:pointer;padding:2px 5px;line-height:1;display:none}
+.foto-thumb:hover .foto-del{display:block}
+.foto-add{aspect-ratio:1;border-radius:6px;border:2px dashed var(--b2);display:flex;flex-direction:column;
+align-items:center;justify-content:center;cursor:pointer;transition:all .2s;background:none;gap:4px;font-family:'Rajdhani',sans-serif}
+.foto-add:hover{border-color:var(--yw);background:var(--yg)}
+.foto-add span{font-size:1.3rem}
+.foto-add small{font-size:.65rem;color:var(--t2)}
+.foto-add input{display:none}
+.foto-count{font-size:.7rem;color:var(--t3)}
+
+.pft{display:flex;gap:8px;padding:12px 18px;border-top:1px solid var(--b1);background:var(--s1);flex-shrink:0}
+.bsv{flex:1;padding:9px;background:var(--ac);color:#000;border:none;border-radius:7px;
+font-family:'Rajdhani',sans-serif;font-size:.85rem;font-weight:700;letter-spacing:1px;cursor:pointer;transition:box-shadow .2s}
+.bsv:hover{box-shadow:0 0 20px rgba(0,212,255,.45)}
+.bcl{padding:9px 14px;background:var(--s2);border:1px solid var(--b2);border-radius:7px;color:var(--t2);
+font-family:'Rajdhani',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;transition:all .15s}
+.bcl:hover{border-color:var(--t2);color:var(--t1)}
+
+/* PHOTO LIGHTBOX */
+#lbx{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:4000;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+#lbx.on{display:flex}
+#lbx-img{max-width:92vw;max-height:80vh;border-radius:10px;object-fit:contain;box-shadow:0 0 60px rgba(0,0,0,.8)}
+#lbx-close{position:absolute;top:16px;right:20px;background:var(--s2);border:1px solid var(--b2);border-radius:8px;
+color:var(--t1);font-size:1.2rem;cursor:pointer;padding:6px 12px;z-index:4001}
+#lbx-info{color:var(--t2);font-size:.8rem;letter-spacing:1px}
+#lbx-nav{display:flex;gap:12px}
+.lbx-btn{background:var(--s2);border:1px solid var(--b2);border-radius:8px;color:var(--t1);
+font-size:1rem;cursor:pointer;padding:8px 16px;font-family:'Rajdhani',sans-serif;font-weight:600;transition:all .15s}
+.lbx-btn:hover{border-color:var(--ac);color:var(--ac)}
+
+/* MY LOCATION */
+@keyframes ploc{0%{box-shadow:0 0 0 0 rgba(0,212,255,.5)}70%{box-shadow:0 0 0 14px rgba(0,212,255,0)}100%{box-shadow:0 0 0 0 rgba(0,212,255,0)}}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--s2);
+border:1px solid var(--b2);border-radius:10px;padding:12px 22px;color:var(--t1);font-size:.88rem;font-weight:600;
+z-index:9999;transition:transform .3s cubic-bezier(.4,0,.2,1);white-space:nowrap;pointer-events:none}
+#toast.on{transform:translateX(-50%) translateY(0)}
+
+/* HINT */
+.hint{font-size:.75rem;color:var(--t3);line-height:1.6;padding:8px 10px;background:var(--s3);border-radius:6px;border-left:3px solid var(--ac)}
+
+/* IMPORT BASE MODAL */
+#import-modal{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:3500;
+display:none;align-items:center;justify-content:center}
+#import-modal.on{display:flex}
+.im-card{background:var(--s1);border:1px solid var(--b2);border-radius:16px;padding:28px;width:500px;max-width:95vw;
+display:flex;flex-direction:column;gap:18px;box-shadow:0 24px 60px rgba(0,0,0,.7);max-height:90vh;overflow-y:auto}
+.im-title{font-size:1.15rem;font-weight:700;color:var(--gn);letter-spacing:1px}
+.im-map-wrap{display:flex;flex-direction:column;gap:6px}
+.im-map-lbl{font-size:.72rem;color:var(--t2);letter-spacing:1px;text-transform:uppercase}
+.im-selrow{display:flex;gap:8px;align-items:center}
+.im-sel{flex:1;background:var(--s2);border:1px solid var(--b2);border-radius:7px;color:var(--t1);
+font-family:'Rajdhani',sans-serif;font-size:.88rem;padding:8px 10px;outline:none;transition:border-color .2s}
+.im-sel:focus{border-color:var(--gn)}
+.im-prev-tbl{max-height:200px;overflow-y:auto;border-radius:6px;border:1px solid var(--b1)}
+.im-prev-tbl::-webkit-scrollbar{width:4px}
+.im-prev-tbl::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+.im-cnt{font-size:.82rem;color:var(--t2)}
+.im-cnt b{color:var(--t1)}
+.im-foot{display:flex;gap:10px;flex-shrink:0}
+.im-conf{flex:1;padding:11px;background:var(--gn);color:#000;border:none;border-radius:8px;
+font-family:'Rajdhani',sans-serif;font-size:.9rem;font-weight:700;letter-spacing:1.5px;cursor:pointer;transition:box-shadow .2s}
+.im-conf:hover{box-shadow:0 0 24px rgba(0,230,118,.4)}
+.im-conf:disabled{opacity:.4;cursor:not-allowed}
+.im-cancel{padding:11px 16px;background:var(--s2);border:1px solid var(--b2);border-radius:8px;
+color:var(--t2);font-family:'Rajdhani',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .15s}
+.im-cancel:hover{border-color:var(--t2);color:var(--t1)}
+
+@media(max-width:600px){
+  :root{--sw:100vw}
+  .hsts .sp:nth-child(n+3){display:none}
+  #pop{width:calc(100vw - 16px);max-width:400px;border-radius:16px 16px 12px 12px}
+  .pac{gap:10px}.sbn{padding:14px 4px;font-size:.82rem}
+}
+</style>
 </head>
 <body>
+<div id="ld"><div class="lr"></div><div class="lt">Conectando ao Firebase…</div></div>
 
-    <div class="ui-panel">
-        <div>
-            <strong>Monitoramento LN</strong>
-            <div style="font-size: 11px; margin-top: 3px;">
-                <span class="status-dot" style="background:#2ecc71"></span>Apto
-                <span class="status-dot" style="background:#e74c3c; margin-left:8px"></span>Manut.
-            </div>
-        </div>
-        <div class="btn-group">
-            <button class="btn-import" onclick="document.getElementById('excel-input').click()">Subir XLSX</button>
-            <input type="file" id="excel-input" style="display: none;" accept=".xlsx, .xls">
-        </div>
+<div id="login">
+  <div class="lcard">
+    <div class="logo"><h1>⚡ EASYTRAFO</h1><p>Sistema de Mapeamento de Transformadores</p></div>
+    <div class="lf"><label>Nome de Usuário</label><input type="text" id="uinp" placeholder="Digite seu nome..." autocomplete="off"></div>
+    <button class="btnl" onclick="doLogin()">ENTRAR NO SISTEMA</button>
+  </div>
+</div>
+
+<div id="app">
+  <div id="map"></div>
+  <div id="hdr">
+    <div class="hlogo">⚡ EASYTRAFO</div>
+    <div class="hsep"></div>
+    <div id="husr">—</div>
+    <div class="hsts">
+      <div class="sp"><div class="dot x"></div><span id="s0">0</span>&nbsp;total</div>
+      <div class="sp"><div class="dot g"></div><span id="s1">0</span>&nbsp;apto</div>
+      <div class="sp"><div class="dot r"></div><span id="s2">0</span>&nbsp;n.apto</div>
+      <div class="sp"><div class="dot b"></div><span id="s3">0</span>&nbsp;inst.</div>
     </div>
+  </div>
+  <button id="stgl" onclick="toggleSB()">☰</button>
+  <div id="sb">
+    <div class="sbh">
+      <div class="sbt">Trafos — <span id="lcnt">0</span> encontrados</div>
+      <input class="si" id="si" type="text" placeholder="🔍 Buscar trafo..." oninput="renderList()">
+      <div class="fr">
+        <button class="fb fA" data-f="all" onclick="setF('all',this)">Todos</button>
+        <button class="fb" data-f="apto" onclick="setF('apto',this)">Apto</button>
+        <button class="fb" data-f="napto" onclick="setF('napto',this)">N.Apto</button>
+        <button class="fb" data-f="instalado" onclick="setF('instalado',this)">Instal.</button>
+        <button class="fb" data-f="sem" onclick="setF('sem',this)">Sem</button>
+      </div>
+    </div>
+    <div class="stabs">
+      <button class="stab on" onclick="swTab('list',this)">Lista</button>
+      <button class="stab" onclick="swTab('io',this)">Import/Export</button>
+      <button class="stab" onclick="swTab('bulk',this)">Upload Massa</button>
+    </div>
+    <div class="tc on" id="tc-list"><div id="tlist"></div></div>
+    <div class="tc" id="tc-io">
+      <div class="iotab">
+        <div class="iosec">
+          <div class="iostt">📥 Importar Nova Base</div>
+          <div class="hint">Substitui a base atual. Use XLSX/CSV com colunas:<br><b>TRAFO_PLACA, LATITUDE, LONGITUDE</b><br>Você poderá mapear as colunas manualmente.</div>
+          <div class="uz" onclick="document.getElementById('fim').click()">
+            <input type="file" id="fim" accept=".xlsx,.xls,.csv" onchange="handleImport(event)">
+            📂 Clique para selecionar XLSX da base
+          </div>
+          <button class="ba byw" onclick="downloadExampleBase()">⬇ Baixar Modelo de Base</button>
+        </div>
+        <div class="iosec">
+          <div class="iostt">📤 Exportar Dados de Campo</div>
+          <button class="ba bb" onclick="exportXLSX()">⬇ Exportar XLSX com Status</button>
+          <button class="ba" onclick="exportCSV()">⬇ Exportar CSV</button>
+        </div>
+        <div class="iosec">
+          <div class="iostt">ℹ️ Resumo</div>
+          <div style="font-size:.82rem;color:var(--t2);line-height:1.8">
+            Base: <b id="iocnt">0</b> trafos carregados<br>
+            Firebase sincronizado em tempo real<br>
+            Exportação inclui trafo, lat, lon, status, obs, usuário, data<br>
+            Fotos armazenadas em base64 no Firebase
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="tc" id="tc-bulk">
+      <div class="iotab">
+        <div class="iosec">
+          <div class="iostt">⚡ Upload Massivo de Análises</div>
+          <div class="hint">Analise vários trafos em campo, preencha a planilha e suba tudo de uma vez.</div>
+          <div class="bm-steps">
+            <div class="bm-step">① <b>Baixe o modelo</b> abaixo com todos os trafos da base</div>
+            <div class="bm-step">② <b>Preencha</b> a coluna STATUS com: <b>apto</b>, <b>napto</b> ou <b>instalado</b><br>Para N.Apto, preencha também a coluna OBSERVACAO</div>
+            <div class="bm-step">③ <b>Suba o arquivo</b> preenchido — os status serão enviados todos de uma vez ao Firebase</div>
+          </div>
+          <button class="ba bg2" onclick="downloadTemplate()">⬇ Baixar Modelo (XLSX)</button>
+          <button class="ba bpur" onclick="openBulkModal()">📤 Subir Análises em Massa</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-    <div id="map"></div>
+<!-- IMPORT BASE MODAL (mapeamento de colunas) -->
+<div id="import-modal">
+  <div class="im-card">
+    <div class="im-title">📥 Importar Base de Trafos</div>
+    <div style="font-size:.82rem;color:var(--t2);line-height:1.6">
+      Arquivo: <b id="im-filename" style="color:var(--t1)">—</b><br>
+      Mapeie as colunas do seu arquivo para os campos necessários.
+    </div>
+    <div class="im-map-wrap">
+      <div class="im-map-lbl">Coluna → Trafo/Placa</div>
+      <div class="im-selrow"><select class="im-sel" id="im-col-trafo"></select></div>
+    </div>
+    <div class="im-map-wrap">
+      <div class="im-map-lbl">Coluna → Latitude</div>
+      <div class="im-selrow"><select class="im-sel" id="im-col-lat"></select></div>
+    </div>
+    <div class="im-map-wrap">
+      <div class="im-map-lbl">Coluna → Longitude</div>
+      <div class="im-selrow"><select class="im-sel" id="im-col-lon"></select></div>
+    </div>
+    <div id="im-preview-wrap" style="display:none;flex-direction:column;gap:8px">
+      <div class="bm-prev-hdr">Prévia — primeiros 5 registros</div>
+      <div class="im-prev-tbl" id="im-prev-tbl"></div>
+      <div class="im-cnt">Total: <b id="im-total">0</b> registros válidos encontrados</div>
+    </div>
+    <div class="im-foot">
+      <button class="im-cancel" onclick="closeImportModal()">Cancelar</button>
+      <button class="im-conf" id="im-conf" onclick="confirmImport()" disabled>✅ Confirmar Importação</button>
+    </div>
+  </div>
+</div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- BULK MODAL -->
+<div id="bulk-modal">
+  <div class="bm-card">
+    <div class="bm-title">📤 Upload Massivo de Análises</div>
+    <div class="bm-sub">Selecione o XLSX preenchido com os status dos trafos analisados em campo.</div>
+    <div class="bm-dropzone" id="bm-drop" onclick="document.getElementById('fbulk').click()">
+      <input type="file" id="fbulk" accept=".xlsx,.xls,.csv" onchange="handleBulkFile(event)">
+      📂 Clique ou arraste o arquivo XLSX aqui
+    </div>
+    <div id="bm-preview">
+      <div class="bm-prev-hdr">Prévia — <span id="bm-prev-cnt">0</span> registros encontrados</div>
+      <div id="bm-table-wrap"><table class="bm-tbl"><thead><tr><th>Trafo</th><th>Status</th><th>Observação</th><th>Ok?</th></tr></thead><tbody id="bm-tbody"></tbody></table></div>
+      <div class="bm-cnt">✅ <b id="bm-ok">0</b> válidos &nbsp;⚠️ <b id="bm-skip">0</b> ignorados (sem status)</div>
+    </div>
+    <div class="bm-prog" id="bm-prog">
+      <div class="bm-bar-wrap"><div class="bm-bar" id="bm-bar"></div></div>
+      <div class="bm-prog-txt" id="bm-prog-txt">Enviando…</div>
+    </div>
+    <div class="bm-foot">
+      <button class="bm-cancel" onclick="closeBulkModal()">Cancelar</button>
+      <button class="bm-send" id="bm-send" onclick="sendBulk()" disabled>Enviar ao Firebase</button>
+    </div>
+  </div>
+</div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+<!-- POPUP INDIVIDUAL -->
+<div id="pop">
+  <div class="pop-scroll" id="pop-scroll">
+    <div class="ptt" id="ptt">Trafo #---<span id="pco"></span></div>
+    <div class="pac">
+      <button class="sbn apto" onclick="selSt('apto')"><div class="sd" style="background:var(--gn);box-shadow:0 0 6px var(--gn)"></div>Apto</button>
+      <button class="sbn napto" onclick="selSt('napto')"><div class="sd" style="background:var(--rd);box-shadow:0 0 6px var(--rd)"></div>N.Apto</button>
+      <button class="sbn inst" onclick="selSt('instalado')"><div class="sd" style="background:var(--bl);box-shadow:0 0 6px var(--bl)"></div>Instal.</button>
+    </div>
+    <div class="pob" id="pob"><label>Observação (obrigatório)</label><textarea id="pobt" placeholder="Motivo..."></textarea></div>
+    <!-- FOTOS -->
+    <div class="foto-sec">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="foto-lbl">📷 Fotos da visita</div>
+        <div class="foto-count" id="foto-count">0 foto(s)</div>
+      </div>
+      <div class="foto-grid" id="foto-grid">
+        <label class="foto-add" id="foto-add-btn">
+          <input type="file" accept="image/*" multiple capture="environment" onchange="handleFotoAdd(event)">
+          <span>📷</span>
+          <small>Adicionar</small>
+        </label>
+      </div>
+    </div>
+  </div>
+  <div class="pft">
+    <button class="bcl" onclick="closePop()">Cancelar</button>
+    <button class="bsv" onclick="saveSt()">Salvar</button>
+  </div>
+</div>
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyCxoNBUTu_WOYZTXI-48CitzH3uRko9LGs",
-            authDomain: "acompanhamanutencoesln.firebaseapp.com",
-            databaseURL: "https://acompanhamanutencoesln-default-rtdb.firebaseio.com",
-            projectId: "acompanhamanutencoesln",
-            storageBucket: "acompanhamanutencoesln.firebasestorage.app",
-            messagingSenderId: "888565328678",
-            appId: "1:888565328678:web:cebacba890b77e42f3efe7"
-        };
+<!-- LIGHTBOX -->
+<div id="lbx">
+  <button id="lbx-close" onclick="closeLbx()">✕ Fechar</button>
+  <img id="lbx-img" src="" alt="foto">
+  <div id="lbx-info"></div>
+  <div id="lbx-nav">
+    <button class="lbx-btn" onclick="lbxNav(-1)">◀ Anterior</button>
+    <button class="lbx-btn" onclick="lbxNav(1)">Próxima ▶</button>
+  </div>
+</div>
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const map = L.map('map', { zoomControl: false }).setView([-15, -47], 4);
-        
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        L.control.zoom({ position: 'bottomright' }).addTo(map);
+<div id="toast"></div>
 
-        // Localização Tempo Real
-        map.locate({ watch: true, enableHighAccuracy: true });
-        let userMarker;
-        map.on('locationfound', (e) => {
-            if (!userMarker) {
-                userMarker = L.circleMarker(e.latlng, { radius: 7, color: '#3498db', fillOpacity: 1 }).addTo(map).bindPopup("Sua Posição");
-                map.setView(e.latlng, 15);
-            } else { userMarker.setLatLng(e.latlng); }
-        });
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import{getDatabase,ref,onValue,set,update}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+const cfg={apiKey:"AIzaSyCxoNBUTu_WOYZTXI-48CitzH3uRko9LGs",authDomain:"acompanhamanutencoesln.firebaseapp.com",
+databaseURL:"https://acompanhamanutencoesln-default-rtdb.firebaseio.com",projectId:"acompanhamanutencoesln",
+storageBucket:"acompanhamanutencoesln.firebasestorage.app",messagingSenderId:"888565328678",
+appId:"1:888565328678:web:9a75f47f89bcf5f4f3efe7"};
+const fa=initializeApp(cfg);const fd=getDatabase(fa);
+window._D=fd;window._R=ref;window._S=set;window._U=update;window._OV=onValue;
+window._fbOk=true;document.dispatchEvent(new Event('fbr'));
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// ─── DEFAULT BASE (fallback se não importar) ───
+const DEFAULT_BASE=[{"trafo":"0008338","lat":-5.093174,"lon":-42.813641},{"trafo":"0004731","lat":-5.086774,"lon":-42.811003},{"trafo":"1882546","lat":-5.101877,"lon":-42.8025},{"trafo":"0000523","lat":-5.087127,"lon":-42.800571},{"trafo":"000619X","lat":-5.089527,"lon":-42.805289},{"trafo":"0562718","lat":-5.090653,"lon":-42.805842},{"trafo":"0468762","lat":-5.197178,"lon":-42.747278},{"trafo":"1739735","lat":-5.194764,"lon":-42.74432},{"trafo":"1374400","lat":-5.202348,"lon":-42.730296},{"trafo":"1374427","lat":-5.203569,"lon":-42.730349},{"trafo":"1004638","lat":-5.067956,"lon":-42.791045},{"trafo":"0110124","lat":-5.066808,"lon":-42.790714},{"trafo":"0205834","lat":-5.072593,"lon":-42.789458},{"trafo":"0109673","lat":-5.073076,"lon":-42.789088},{"trafo":"0533408","lat":-5.071871,"lon":-42.785595},{"trafo":"0109924","lat":-5.068553,"lon":-42.790762},{"trafo":"0535486","lat":-5.068654,"lon":-42.788635},{"trafo":"0102784","lat":-5.073104,"lon":-42.789323},{"trafo":"0206822","lat":-5.072574,"lon":-42.78781},{"trafo":"053353X","lat":-5.071713,"lon":-42.78427}];
 
-        // Monitorar Firebase
-        const markersGroup = L.layerGroup().addTo(map);
-        onValue(ref(db, 'transformadores/'), (snapshot) => {
-            markersGroup.clearLayers();
-            const data = snapshot.val();
-            for (let id in data) {
-                const item = data[id];
-                const marker = L.circleMarker([item.latitude, item.longitude], {
-                    radius: 10, fillColor: item.status === 'apto' ? '#2ecc71' : '#e74c3c',
-                    color: '#fff', weight: 2, fillOpacity: 1
-                }).addTo(markersGroup);
-                marker.bindPopup(`<b>${item.referencia}</b><br>Status: ${item.status}`);
-            }
-        });
+let user='',trafos=[],sts={},mkrs={},map=null,selId=null,pendSt=null,filt='all',sbOpen=true,locMk=null,bulkRows=[];
 
-        // Função para Processar EXCEL
-        document.getElementById('excel-input').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
+// ─── FOTOS STATE ───
+let pendFotos=[];   // base64 strings das fotos a salvar
+let lbxFotos=[];    // fotos abertas no lightbox
+let lbxIdx=0;
 
-            reader.onload = function(evt) {
-                const data = evt.target.result;
-                const workbook = XLSX.read(data, { type: 'binary' });
-                const firstSheet = workbook.SheetNames[0];
-                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
+// ─── IMPORT STATE ───
+let importRows=[];  // dados brutos do xlsx
+let importCols=[];  // nomes das colunas
 
-                const novosDados = {};
-                rows.forEach((row, index) => {
-                    if (row.latitude && row.longitude) {
-                        const id = row.id || `tr_${Date.now()}_${index}`;
-                        novosDados[id] = {
-                            referencia: row.referencia || "Sem ref",
-                            latitude: parseFloat(row.latitude),
-                            longitude: parseFloat(row.longitude),
-                            status: String(row.status).toLowerCase(),
-                            data: row.data || new Date().toLocaleDateString()
-                        };
-                    }
-                });
+const COL={none:'#484f58',apto:'#00e676',napto:'#ff1744',instalado:'#448aff'};
 
-                if (confirm(`Deseja carregar ${Object.keys(novosDados).length} pontos para o mapa?`)) {
-                    set(ref(db, 'transformadores/'), novosDados)
-                        .then(() => alert("Base atualizada com sucesso!"))
-                        .catch(err => alert("Erro ao subir para o Firebase: " + err));
-                }
-            };
-            reader.readAsBinaryString(file);
-        });
-    </script>
+function mkIcon(st,sel){
+  const c=sel?'#ffd600':COL[st||'none'];
+  const g=sel?'rgba(255,214,0,.6)':st==='apto'?'rgba(0,230,118,.5)':st==='napto'?'rgba(255,23,68,.5)':st==='instalado'?'rgba(68,138,255,.5)':'rgba(72,79,88,.15)';
+  const sz=sel?18:11;
+  return L.divIcon({className:'',html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${c};border:2px solid rgba(255,255,255,.75);box-shadow:0 0 ${sel?18:7}px ${g};transition:all .2s"></div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});
+}
+
+document.addEventListener('fbr',init);
+if(window._fbOk)init();
+
+function init(){
+  setTimeout(()=>{
+    const ld=document.getElementById('ld');
+    ld.style.opacity='0';setTimeout(()=>ld.style.display='none',400);
+    document.getElementById('login').style.display='flex';
+  },600);
+}
+
+function doLogin(){
+  const v=document.getElementById('uinp').value.trim();
+  if(!v){toast('⚠️ Digite seu nome!');return;}
+  user=v;
+  document.getElementById('login').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('husr').textContent='👤 '+user;
+  startApp();
+}
+document.getElementById('uinp').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+
+function startApp(){
+  map=L.map('map',{center:[-5.08,-42.78],zoom:13});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
+
+  // Tenta carregar base salva no localStorage, senão usa default
+  const savedBase=localStorage.getItem('easytrafo_base');
+  if(savedBase){
+    try{trafos=JSON.parse(savedBase).filter(t=>t.lat&&t.lon);}
+    catch(e){trafos=DEFAULT_BASE.filter(t=>t.lat&&t.lon);}
+  } else {
+    trafos=DEFAULT_BASE.filter(t=>t.lat&&t.lon);
+  }
+
+  window._OV(window._R(window._D,'statuses'),snap=>{
+    sts=snap.val()||{};
+    rebuildMarkers();updateStats();renderList();
+  });
+  startGPS();
+  map.on('click',closePop);
+}
+
+function rebuildMarkers(){
+  Object.values(mkrs).forEach(m=>m.remove());mkrs={};
+  trafos.forEach(t=>{
+    const st=(sts[t.trafo]||{}).status||null;
+    const isSel=t.trafo===selId;
+    const m=L.marker([t.lat,t.lon],{icon:mkIcon(st,isSel),zIndexOffset:isSel?1000:0}).addTo(map);
+    m.on('click',e=>{L.DomEvent.stopPropagation(e);openPop(t,e.originalEvent);});
+    mkrs[t.trafo]=m;
+  });
+}
+
+function startGPS(){
+  if(!navigator.geolocation){toast('⚠️ Geolocalização não suportada.');return;}
+  const gpsIcon=()=>L.divIcon({
+    className:'',
+    html:`<div style="width:28px;height:28px;border-radius:50%;background:rgba(0,212,255,0.25);display:flex;align-items:center;justify-content:center;animation:ploc 2s infinite;box-shadow:0 0 0 0 rgba(0,212,255,0.4);">
+      <div style="width:14px;height:14px;border-radius:50%;background:#00d4ff;border:2.5px solid #ffffff;box-shadow:0 0 12px rgba(0,212,255,0.9),0 0 4px #fff;"></div>
+    </div>`,
+    iconSize:[28,28],iconAnchor:[14,14]
+  });
+  navigator.geolocation.watchPosition(
+    p=>{
+      const la=p.coords.latitude,lo=p.coords.longitude;
+      if(!locMk){
+        locMk=L.marker([la,lo],{icon:gpsIcon(),zIndexOffset:9000}).addTo(map);
+        locMk.bindTooltip('📍 Você está aqui',{permanent:false,direction:'top'});
+      } else {
+        locMk.setLatLng([la,lo]);locMk.setIcon(gpsIcon());
+      }
+    },
+    err=>{
+      if(err.code===1)toast('❌ Permissão de GPS negada.');
+      else toast('⚠️ GPS: '+err.message);
+    },
+    {enableHighAccuracy:true,maximumAge:3000,timeout:15000}
+  );
+}
+
+// ══════════════════════════════════════════════
+//  POPUP
+// ══════════════════════════════════════════════
+function openPop(t,evt){
+  selId=t.trafo;pendSt=null;pendFotos=[];rebuildMarkers();
+  const st=sts[t.trafo];
+  document.getElementById('ptt').innerHTML=`Trafo #${t.trafo}<span>${t.lat.toFixed(5)}, ${t.lon.toFixed(5)}</span>`;
+  document.querySelectorAll('.sbn').forEach(b=>b.classList.remove('on'));
+  if(st){
+    const cls=st.status==='instalado'?'inst':st.status;
+    const b=document.querySelector(`.sbn.${cls}`);
+    if(b){b.classList.add('on');pendSt=st.status;}
+  }
+  const ob=document.getElementById('pob');
+  ob.classList.toggle('on',!!(st&&st.status==='napto'));
+  document.getElementById('pobt').value=st?st.obs||'':'';
+
+  // Carregar fotos existentes
+  const existingFotos=(st&&st.fotos)||[];
+  renderFotoGrid(existingFotos,false);
+
+  const pop=document.getElementById('pop');
+  const isMobile=window.innerWidth<=600;
+
+  // Mostrar temporariamente para medir altura real
+  pop.style.visibility='hidden';
+  pop.style.display='flex';
+  const popH=pop.offsetHeight||420;
+  const popW=pop.offsetWidth||300;
+  pop.style.display='';
+  pop.style.visibility='';
+
+  if(isMobile){
+    pop.style.left='50%';
+    pop.style.top='auto';
+    pop.style.bottom='12px';
+    pop.style.transform='translateX(-50%)';
+    pop.style.maxHeight='85vh';
+  } else {
+    const MARGIN=10;
+    const HDR=54; // altura do header
+    const sbW=sbOpen?360:0;
+    const maxX=window.innerWidth-sbW-popW/2-MARGIN;
+    const minX=popW/2+MARGIN;
+
+    let cx=evt?evt.clientX:window.innerWidth/2;
+    let cy=evt?evt.clientY:window.innerHeight/2;
+
+    // Clamp horizontal
+    cx=Math.max(minX,Math.min(cx,maxX));
+
+    // Decidir se popup fica acima ou abaixo do ponto clicado
+    const spaceAbove=cy-HDR-MARGIN;
+    const spaceBelow=window.innerHeight-cy-MARGIN;
+
+    pop.style.transform='';
+    pop.style.bottom='auto';
+    pop.style.maxHeight=(Math.max(spaceAbove,spaceBelow)-20)+'px';
+
+    if(spaceAbove>=popH||spaceAbove>=spaceBelow){
+      // Acima do marcador
+      pop.style.left=cx+'px';
+      pop.style.top=(cy-8)+'px';
+      pop.style.transform='translate(-50%,-100%)';
+    } else {
+      // Abaixo do marcador
+      pop.style.left=cx+'px';
+      pop.style.top=(cy+18)+'px';
+      pop.style.transform='translateX(-50%)';
+    }
+  }
+  pop.classList.add('on');renderList();
+}
+
+function closePop(){
+  selId=null;pendSt=null;pendFotos=[];
+  document.getElementById('pop').classList.remove('on');
+  rebuildMarkers();renderList();
+}
+
+function selSt(s){
+  pendSt=s;
+  document.querySelectorAll('.sbn').forEach(b=>b.classList.remove('on'));
+  document.querySelector(`.sbn.${s==='instalado'?'inst':s}`).classList.add('on');
+  document.getElementById('pob').classList.toggle('on',s==='napto');
+  if(s!=='napto')document.getElementById('pobt').value='';
+}
+
+// ══════════════════════════════════════════════
+//  FOTOS
+// ══════════════════════════════════════════════
+function renderFotoGrid(savedFotos,redraw){
+  const grid=document.getElementById('foto-grid');
+  // remover thumbs antigas, manter o botão add
+  grid.querySelectorAll('.foto-thumb').forEach(el=>el.remove());
+
+  const allFotos=[...savedFotos,...pendFotos.map(f=>({src:f,pending:true}))];
+  document.getElementById('foto-count').textContent=`${allFotos.length} foto(s)`;
+
+  allFotos.forEach((f,idx)=>{
+    const div=document.createElement('div');
+    div.className='foto-thumb';
+    const src=typeof f==='string'?f:f.src;
+    div.innerHTML=`<img src="${src}" alt="foto ${idx+1}" onclick="openLbx(${idx})">
+      <button class="foto-del" onclick="delFoto(${idx},${!!f.pending})">✕</button>`;
+    grid.insertBefore(div,document.getElementById('foto-add-btn'));
+  });
+
+  // expor fotos para lightbox
+  lbxFotos=allFotos.map(f=>typeof f==='string'?f:f.src);
+}
+
+function handleFotoAdd(ev){
+  const files=[...ev.target.files];
+  if(!files.length)return;
+  const st=sts[selId]||{};
+  const existing=(st.fotos||[]);
+  const total=existing.length+pendFotos.length+files.length;
+  if(total>10){toast('⚠️ Máximo de 10 fotos por trafo!');return;}
+
+  let loaded=0;
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      // comprimir/redimensionar
+      compressImg(e.target.result,800,file.type||'image/jpeg',b64=>{
+        pendFotos.push(b64);
+        loaded++;
+        if(loaded===files.length){
+          const existing2=(sts[selId]||{}).fotos||[];
+          renderFotoGrid(existing2,true);
+        }
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+  ev.target.value='';
+}
+
+function compressImg(src,maxW,type,cb){
+  const img=new Image();
+  img.onload=()=>{
+    const scale=Math.min(1,maxW/img.width);
+    const w=Math.round(img.width*scale);
+    const h=Math.round(img.height*scale);
+    const c=document.createElement('canvas');
+    c.width=w;c.height=h;
+    c.getContext('2d').drawImage(img,0,0,w,h);
+    cb(c.toDataURL('image/jpeg',0.72));
+  };
+  img.src=src;
+}
+
+function delFoto(idx,isPending){
+  const st=sts[selId]||{};
+  const saved=(st.fotos||[]);
+  if(isPending){
+    const savedCount=saved.length;
+    const pendIdx=idx-savedCount;
+    if(pendIdx>=0)pendFotos.splice(pendIdx,1);
+  } else {
+    // remover foto salva: será sobrescrita no save
+    saved.splice(idx,1);
+    if(sts[selId])sts[selId].fotos=saved;
+  }
+  renderFotoGrid((sts[selId]||{}).fotos||[],true);
+}
+
+// ── LIGHTBOX ──
+function openLbx(idx){
+  lbxIdx=idx;
+  document.getElementById('lbx-img').src=lbxFotos[idx];
+  document.getElementById('lbx-info').textContent=`Foto ${idx+1} de ${lbxFotos.length}`;
+  document.getElementById('lbx').classList.add('on');
+}
+function closeLbx(){document.getElementById('lbx').classList.remove('on');}
+function lbxNav(d){
+  lbxIdx=(lbxIdx+d+lbxFotos.length)%lbxFotos.length;
+  document.getElementById('lbx-img').src=lbxFotos[lbxIdx];
+  document.getElementById('lbx-info').textContent=`Foto ${lbxIdx+1} de ${lbxFotos.length}`;
+}
+document.getElementById('lbx').addEventListener('click',function(e){if(e.target===this)closeLbx();});
+
+// ─── SAVE ───
+async function saveSt(){
+  if(!selId||!pendSt){toast('⚠️ Selecione um status!');return;}
+  const obs=document.getElementById('pobt').value.trim();
+  if(pendSt==='napto'&&!obs){toast('⚠️ Informe a observação!');document.getElementById('pobt').focus();return;}
+
+  const existing=(sts[selId]||{}).fotos||[];
+  const allFotos=[...existing,...pendFotos];
+
+  // Aviso se fotos grandes (>2MB total estimado)
+  const totalSize=allFotos.reduce((a,b)=>a+b.length,0);
+  if(totalSize>2000000){
+    toast('⚠️ Fotos muito grandes! Comprimindo...');
+  }
+
+  const payload={status:pendSt,obs,user,ts:Date.now(),fotos:allFotos};
+  try{
+    await window._S(window._R(window._D,'statuses/'+selId),payload);
+    toast(`✅ Trafo ${selId} → ${pendSt.toUpperCase()} | ${allFotos.length} foto(s)`);
+    closePop();
+  }catch(e){
+    toast('❌ Erro ao salvar: '+e.message);
+    console.error(e);
+  }
+}
+
+function updateStats(){
+  let a=0,n=0,i=0;
+  Object.values(sts).forEach(s=>{if(s.status==='apto')a++;else if(s.status==='napto')n++;else if(s.status==='instalado')i++;});
+  document.getElementById('s0').textContent=trafos.length;
+  document.getElementById('s1').textContent=a;
+  document.getElementById('s2').textContent=n;
+  document.getElementById('s3').textContent=i;
+  document.getElementById('iocnt').textContent=trafos.length;
+}
+
+function renderList(){
+  const q=(document.getElementById('si').value||'').toLowerCase();
+  const filtered=trafos.filter(t=>{
+    const st=(sts[t.trafo]||{}).status||'sem';
+    if(filt!=='all'&&st!==filt)return false;
+    if(q&&!t.trafo.toLowerCase().includes(q))return false;
+    return true;
+  });
+  document.getElementById('lcnt').textContent=filtered.length;
+  document.getElementById('tlist').innerHTML=filtered.map(t=>{
+    const st=(sts[t.trafo]||{}).status||'none';
+    const lb=st==='none'?'S/Status':st==='apto'?'Apto':st==='napto'?'N.Apto':'Instalado';
+    const hasFoto=(sts[t.trafo]&&(sts[t.trafo].fotos||[]).length>0);
+    return `<div class="ti ${t.trafo===selId?'sel':''}" onclick="focusTf('${t.trafo}')">
+      <div class="tdt ${st}"></div>
+      <div class="tin">
+        <div class="tid">${t.trafo}${hasFoto?'<span class="ti-img"> 📷</span>':''}</div>
+        <div class="tco">${t.lat.toFixed(4)}, ${t.lon.toFixed(4)}</div>
+      </div>
+      <div class="tst ${st}">${lb}</div>
+    </div>`;
+  }).join('');
+}
+
+function focusTf(id){
+  const t=trafos.find(x=>x.trafo===id);if(!t)return;
+  map.setView([t.lat,t.lon],17,{animate:true});
+  setTimeout(()=>{const m=mkrs[id];if(!m)return;const pt=map.latLngToContainerPoint(m.getLatLng());openPop(t,{clientX:pt.x,clientY:pt.y});},400);
+}
+
+function setF(f,btn){
+  filt=f;
+  document.querySelectorAll('.fb').forEach(b=>{
+    b.className='fb';
+    if(b.dataset.f===f)b.classList.add(f==='all'?'fA':f==='apto'?'fG':f==='napto'?'fR':f==='instalado'?'fB':'fX');
+  });
+  renderList();
+}
+
+function toggleSB(){
+  sbOpen=!sbOpen;
+  document.getElementById('sb').classList.toggle('col',!sbOpen);
+  document.getElementById('stgl').textContent=sbOpen?'✕':'☰';
+}
+
+function swTab(n,btn){
+  document.querySelectorAll('.stab').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  document.querySelectorAll('.tc').forEach(t=>t.classList.remove('on'));
+  document.getElementById('tc-'+n).classList.add('on');
+}
+
+// ══════════════════════════════════════════════
+//  IMPORT BASE — COM MAPEAMENTO DE COLUNAS
+// ══════════════════════════════════════════════
+function handleImport(ev){
+  const f=ev.target.files[0];if(!f)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!rows.length){toast('❌ Arquivo vazio!');return;}
+      importRows=rows;
+      importCols=Object.keys(rows[0]);
+      document.getElementById('im-filename').textContent=f.name;
+      populateImportSelects();
+      document.getElementById('import-modal').classList.add('on');
+    }catch(e){toast('❌ Erro: '+e.message);}
+  };
+  reader.readAsBinaryString(f);
+  ev.target.value='';
+}
+
+function populateImportSelects(){
+  const ids=['im-col-trafo','im-col-lat','im-col-lon'];
+  const hints=[/trafo|placa|id/i, /lat/i, /lon|lng/i];
+  ids.forEach((id,i)=>{
+    const sel=document.getElementById(id);
+    sel.innerHTML='<option value="">— Selecione —</option>'+importCols.map(c=>`<option value="${c}">${c}</option>`).join('');
+    const auto=importCols.find(c=>hints[i].test(c));
+    if(auto)sel.value=auto;
+    sel.addEventListener('change',previewImport);
+  });
+  previewImport();
+}
+
+function previewImport(){
+  const tk=document.getElementById('im-col-trafo').value;
+  const lk=document.getElementById('im-col-lat').value;
+  const lok=document.getElementById('im-col-lon').value;
+  const wrap=document.getElementById('im-preview-wrap');
+  const conf=document.getElementById('im-conf');
+  if(!tk||!lk||!lok){wrap.style.display='none';conf.disabled=true;return;}
+
+  const valid=importRows.filter(r=>{
+    const lat=parseFloat(r[lk]),lon=parseFloat(r[lok]);
+    return r[tk]&&!isNaN(lat)&&!isNaN(lon);
+  });
+  document.getElementById('im-total').textContent=valid.length;
+
+  const preview=valid.slice(0,5);
+  document.getElementById('im-prev-tbl').innerHTML=`
+    <table class="bm-tbl"><thead><tr><th>Trafo</th><th>Latitude</th><th>Longitude</th></tr></thead>
+    <tbody>${preview.map(r=>`<tr><td>${r[tk]}</td><td>${parseFloat(r[lk]).toFixed(5)}</td><td>${parseFloat(r[lok]).toFixed(5)}</td></tr>`).join('')}</tbody></table>`;
+
+  wrap.style.display=valid.length?'flex':'none';
+  conf.disabled=valid.length===0;
+}
+
+function confirmImport(){
+  const tk=document.getElementById('im-col-trafo').value;
+  const lk=document.getElementById('im-col-lat').value;
+  const lok=document.getElementById('im-col-lon').value;
+  const valid=importRows.filter(r=>{
+    const lat=parseFloat(r[lk]),lon=parseFloat(r[lok]);
+    return r[tk]&&!isNaN(lat)&&!isNaN(lon);
+  }).map(r=>({trafo:String(r[tk]).trim(),lat:parseFloat(r[lk]),lon:parseFloat(r[lok])}));
+
+  trafos=valid;
+  localStorage.setItem('easytrafo_base',JSON.stringify(trafos));
+  rebuildMarkers();renderList();updateStats();
+  closeImportModal();
+  toast(`✅ ${trafos.length} trafos importados com sucesso!`);
+  if(trafos.length>0)map.setView([trafos[0].lat,trafos[0].lon],13);
+}
+
+function closeImportModal(){
+  document.getElementById('import-modal').classList.remove('on');
+  importRows=[];importCols=[];
+}
+
+// Baixar modelo de base vazio
+function downloadExampleBase(){
+  const rows=[{TRAFO_PLACA:'0001234',LATITUDE:-5.0800,LONGITUDE:-42.7800},{TRAFO_PLACA:'0005678',LATITUDE:-5.0750,LONGITUDE:-42.7750}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Base');
+  XLSX.writeFile(wb,'EasyTrafo_Modelo_Base.xlsx');
+  toast('✅ Modelo de base baixado!');
+}
+
+// ─── EXPORT ───
+function exportXLSX(){
+  const rows=trafos.map(t=>{
+    const st=sts[t.trafo];
+    return{'TRAFO_PLACA':t.trafo,'LATITUDE':t.lat,'LONGITUDE':t.lon,
+      'STATUS':st?st.status.toUpperCase():'SEM STATUS','OBSERVAÇÃO':st?st.obs||'':'',
+      'FOTOS':st?(st.fotos||[]).length:0,
+      'USUÁRIO':st?st.user||'':'','DATA_HORA':st?new Date(st.ts).toLocaleString('pt-BR'):''};
+  });
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Trafos');
+  XLSX.writeFile(wb,`EasyTrafo_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('✅ XLSX exportado!');
+}
+
+function exportCSV(){
+  const h=['TRAFO_PLACA','LATITUDE','LONGITUDE','STATUS','OBSERVACAO','FOTOS','USUARIO','DATA_HORA'];
+  const rows=trafos.map(t=>{
+    const st=sts[t.trafo];
+    return[t.trafo,t.lat,t.lon,st?st.status.toUpperCase():'SEM STATUS',
+      st?(st.obs||'').replace(/,/g,';'):'',
+      st?(st.fotos||[]).length:0,
+      st?st.user||'':'',
+      st?new Date(st.ts).toLocaleString('pt-BR'):''].join(',');
+  });
+  const blob=new Blob([[h.join(','),...rows].join('\n')],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`EasyTrafo_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+  toast('✅ CSV exportado!');
+}
+
+// ─── TEMPLATE BULK ───
+function downloadTemplate(){
+  const rows=trafos.map(t=>({'TRAFO_PLACA':t.trafo,'LATITUDE':t.lat,'LONGITUDE':t.lon,'STATUS':'','OBSERVACAO':''}));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Modelo');
+  XLSX.writeFile(wb,'EasyTrafo_Modelo_Analise.xlsx');
+  toast('✅ Modelo baixado!');
+}
+
+// ─── BULK MODAL ───
+function openBulkModal(){
+  bulkRows=[];
+  document.getElementById('bm-preview').classList.remove('on');
+  document.getElementById('bm-prog').classList.remove('on');
+  document.getElementById('bm-send').disabled=true;
+  document.getElementById('fbulk').value='';
+  document.getElementById('bm-bar').style.background='var(--ac)';
+  document.getElementById('bm-bar').style.width='0%';
+  document.getElementById('bulk-modal').classList.add('on');
+}
+function closeBulkModal(){document.getElementById('bulk-modal').classList.remove('on');}
+
+const drop=document.getElementById('bm-drop');
+drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('drag');});
+drop.addEventListener('dragleave',()=>drop.classList.remove('drag'));
+drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('drag');
+  const f=e.dataTransfer.files[0];if(f)processBulkFile(f);});
+
+function handleBulkFile(ev){const f=ev.target.files[0];if(f)processBulkFile(f);}
+
+function processBulkFile(file){
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws);
+      if(!rows.length){toast('❌ Arquivo vazio!');return;}
+      const k=Object.keys(rows[0]);
+      const tk=k.find(x=>/trafo|placa/i.test(x));
+      const sk=k.find(x=>/status/i.test(x));
+      const ok_=k.find(x=>/obs|observa/i.test(x));
+      if(!tk||!sk){toast('❌ Colunas TRAFO_PLACA e STATUS obrigatórias!');return;}
+      const VALID=['apto','napto','instalado'];
+      bulkRows=[];
+      const tbody=document.getElementById('bm-tbody');tbody.innerHTML='';
+      let okCnt=0,skipCnt=0;
+      rows.forEach(row=>{
+        const id=String(row[tk]||'').trim();
+        const rawSt=String(row[sk]||'').trim().toLowerCase();
+        const obs=String(row[ok_]||'').trim();
+        const stOk=VALID.includes(rawSt);
+        if(!id)return;
+        if(stOk){bulkRows.push({id,status:rawSt,obs});okCnt++;}
+        else skipCnt++;
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${id}</td><td>${rawSt?`<span class="st-pill ${stOk?rawSt:'err'}">${rawSt||'—'}</span>`:'—'}</td><td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${obs||'—'}</td><td>${stOk?'✅':'⚠️'}</td>`;
+        tbody.appendChild(tr);
+      });
+      document.getElementById('bm-prev-cnt').textContent=rows.length;
+      document.getElementById('bm-ok').textContent=okCnt;
+      document.getElementById('bm-skip').textContent=skipCnt;
+      document.getElementById('bm-preview').classList.add('on');
+      document.getElementById('bm-send').disabled=okCnt===0;
+    }catch(e){toast('❌ Erro ao ler: '+e.message);}
+  };
+  r.readAsBinaryString(file);
+}
+
+async function sendBulk(){
+  if(!bulkRows.length)return;
+  const btn=document.getElementById('bm-send');btn.disabled=true;
+  const prog=document.getElementById('bm-prog');
+  const bar=document.getElementById('bm-bar');
+  const txt=document.getElementById('bm-prog-txt');
+  prog.classList.add('on');
+  const total=bulkRows.length;let done=0,errs=0;
+  const chunk=10;
+  for(let i=0;i<bulkRows.length;i+=chunk){
+    const slice=bulkRows.slice(i,i+chunk);
+    const updates={};
+    slice.forEach(r=>{
+      const existing=(sts[r.id]||{}).fotos||[];
+      updates['statuses/'+r.id]={status:r.status,obs:r.obs,user,ts:Date.now(),fotos:existing};
+    });
+    try{await window._U(window._R(window._D,'/'),updates);done+=slice.length;}
+    catch(e){errs+=slice.length;}
+    bar.style.width=Math.round(done/total*100)+'%';
+    txt.textContent=`Enviando… ${done}/${total}`;
+    await new Promise(res=>setTimeout(res,50));
+  }
+  txt.textContent=`✅ ${done} enviados${errs?` · ❌ ${errs} erros`:''}`;
+  bar.style.width='100%';bar.style.background=errs?'var(--rd)':'var(--gn)';
+  toast(`✅ Upload completo: ${done} trafos atualizados!`);
+  setTimeout(()=>closeBulkModal(),2000);
+}
+
+// ─── TOAST ───
+let _tt;
+function toast(msg){
+  const el=document.getElementById('toast');el.textContent=msg;el.classList.add('on');
+  clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('on'),3800);
+}
+
+// Expor funções globais necessárias
+window.doLogin=doLogin;window.toggleSB=toggleSB;window.swTab=swTab;window.setF=setF;window.focusTf=focusTf;
+window.openPop=openPop;window.closePop=closePop;window.selSt=selSt;window.saveSt=saveSt;
+window.handleImport=handleImport;window.downloadExampleBase=downloadExampleBase;window.confirmImport=confirmImport;window.closeImportModal=closeImportModal;
+window.exportXLSX=exportXLSX;window.exportCSV=exportCSV;window.downloadTemplate=downloadTemplate;
+window.openBulkModal=openBulkModal;window.closeBulkModal=closeBulkModal;window.handleBulkFile=handleBulkFile;window.sendBulk=sendBulk;
+window.handleFotoAdd=handleFotoAdd;window.delFoto=delFoto;window.openLbx=openLbx;window.closeLbx=closeLbx;window.lbxNav=lbxNav;
+</script>
 </body>
 </html>
