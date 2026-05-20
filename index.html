@@ -542,14 +542,18 @@ function startApp(){
   map=L.map('map',{center:[-5.08,-42.78],zoom:13});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
 
-  // Tenta carregar base salva no localStorage, senão usa default
-  const savedBase=localStorage.getItem('easytrafo_base');
-  if(savedBase){
-    try{trafos=JSON.parse(savedBase).filter(t=>t.lat&&t.lon);}
-    catch(e){trafos=DEFAULT_BASE.filter(t=>t.lat&&t.lon);}
-  } else {
-    trafos=DEFAULT_BASE.filter(t=>t.lat&&t.lon);
-  }
+  // Base carregada do Firebase — compartilhada entre todos os usuários
+  window._OV(window._R(window._D,'base'),snap=>{
+    const fbBase=snap.val();
+    if(fbBase&&Array.isArray(fbBase)&&fbBase.length>0){
+      trafos=fbBase.filter(t=>t.lat&&t.lon);
+    } else {
+      // Sem base no Firebase ainda: usa DEFAULT e já salva lá
+      trafos=DEFAULT_BASE.filter(t=>t.lat&&t.lon);
+      window._S(window._R(window._D,'base'),trafos).catch(()=>{});
+    }
+    rebuildMarkers();updateStats();renderList();
+  });
 
   window._OV(window._R(window._D,'statuses'),snap=>{
     sts=snap.val()||{};
@@ -926,7 +930,7 @@ function previewImport(){
   conf.disabled=valid.length===0;
 }
 
-function confirmImport(){
+async function confirmImport(){
   const tk=document.getElementById('im-col-trafo').value;
   const lk=document.getElementById('im-col-lat').value;
   const lok=document.getElementById('im-col-lon').value;
@@ -935,12 +939,22 @@ function confirmImport(){
     return r[tk]&&!isNaN(lat)&&!isNaN(lon);
   }).map(r=>({trafo:String(r[tk]).trim(),lat:parseFloat(r[lk]),lon:parseFloat(r[lok])}));
 
-  trafos=valid;
-  localStorage.setItem('easytrafo_base',JSON.stringify(trafos));
-  rebuildMarkers();renderList();updateStats();
-  closeImportModal();
-  toast(`✅ ${trafos.length} trafos importados com sucesso!`);
-  if(trafos.length>0)map.setView([trafos[0].lat,trafos[0].lon],13);
+  const btn=document.getElementById('im-conf');
+  btn.disabled=true;
+  btn.textContent='Salvando no Firebase…';
+  try{
+    // Salva base no Firebase — todos os usuários receberão automaticamente
+    await window._S(window._R(window._D,'base'),valid);
+    trafos=valid;
+    rebuildMarkers();renderList();updateStats();
+    closeImportModal();
+    toast(`✅ ${trafos.length} trafos importados e sincronizados para todos!`);
+    if(trafos.length>0)map.setView([trafos[0].lat,trafos[0].lon],13);
+  }catch(e){
+    toast('❌ Erro ao salvar base: '+e.message);
+    btn.disabled=false;
+    btn.textContent='✅ Confirmar Importação';
+  }
 }
 
 function closeImportModal(){
